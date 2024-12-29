@@ -65,27 +65,37 @@ public class MPDConnectionThread extends Thread {
         setDaemon(true);
     }
 
+    private void log( String message ) {
+        logger.debug( "("+address+") " +  message);
+    }
+
     @Override
     public void run() {
         try {
             while (!disposed.get()) {
                 try {
+                    log("start main loop, queuing commands status and currentsong");
                     synchronized (pendingCommands) {
                         pendingCommands.add(new MPDCommand("status"));
                         pendingCommands.add(new MPDCommand("currentsong"));
                     }
 
+
                     establishConnection();
+                    log("set thing online");
                     updateThingStatus(ThingStatus.ONLINE, ThingStatusDetail.NONE, null);
 
                     processPendingCommands();
                 } catch (UnknownHostException e) {
                     updateThingStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                             "Unknown host " + address);
+                    log( "error: Unknown host " + address );
                 } catch (IOException e) {
                     updateThingStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, e.getMessage());
+                    log( "error: Unknown host " + e.getMessage() );
                 } catch (MPDException e) {
                     updateThingStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
+                    log( "error: Unknown host " + e.getMessage() );
                 }
 
                 isInIdle.set(false);
@@ -98,6 +108,7 @@ public class MPDConnectionThread extends Thread {
                         logger.debug("reconnecting in {} seconds and clearing pending commands...",
                                 RECONNECTION_TIMEOUT_SEC);
                         sleep(RECONNECTION_TIMEOUT_SEC * 1000);
+                        log("waking up for reconnection");
                         synchronized (pendingCommands) {
                             pendingCommands.clear();
                         }
@@ -105,7 +116,11 @@ public class MPDConnectionThread extends Thread {
                 }
             }
         } catch (InterruptedException ignore) {
+            log("Interrupted exception: " + ignore.getMessage());
+        } catch( Exception e ) {
+            logger.error("Unhandled exception: " + e.getMessage(), e);
         }
+        logger.warn("connection thread stopped");
     }
 
     /**
@@ -113,6 +128,7 @@ public class MPDConnectionThread extends Thread {
      */
     public void dispose() {
         disposed.set(true);
+        log("dispose called");
         Socket socket = this.socket;
         if (socket != null) {
             try {
@@ -161,18 +177,23 @@ public class MPDConnectionThread extends Thread {
     }
 
     private void establishConnection() throws UnknownHostException, IOException, MPDException {
+        log("open socket");
         openSocket();
 
+        log("send connect command");
         MPDCommand currentCommand = new MPDCommand("connect");
+        log("waiting connect response");
         MPDResponse response = readResponse(currentCommand);
 
         if (!response.isOk()) {
             throw new MPDException("Failed to connect to " + this.address + ":" + this.port);
         }
 
+        log("send password");
         if (!password.isEmpty()) {
             currentCommand = new MPDCommand("password", password);
             sendCommand(currentCommand);
+            log("waiting password response");
             response = readResponse(currentCommand);
             if (!response.isOk()) {
                 throw new MPDException("Could not authenticate, please validate your password");
@@ -191,7 +212,7 @@ public class MPDConnectionThread extends Thread {
         }
 
         Socket socket = new Socket(address, port);
-
+        log("obtaining input stream reader");
         inputStreamReader = new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8);
         reader = new BufferedReader(inputStreamReader);
 
@@ -209,45 +230,54 @@ public class MPDConnectionThread extends Thread {
                     currentCommand = new MPDCommand("idle");
                 }
 
+                log("send command from queue: " + currentCommand);
                 sendCommand(currentCommand);
                 if ("idle".equals(currentCommand.getCommand())) {
                     isInIdle.set(true);
                 }
             }
 
+            log("waiting for response for command: " + currentCommand);
             MPDResponse response = readResponse(currentCommand);
+            log("received response: ok = " + response.isOk());
             if (!response.isOk()) {
                 insertCommand(new MPDCommand("clearerror"), 0);
             }
+            log("response to listener");
             listener.onResponse(response);
         }
     }
 
     private void closeSocket() {
         logger.debug("Closing socket");
+        log("closing reader");
         BufferedReader reader = this.reader;
         if (reader != null) {
             try {
                 reader.close();
             } catch (IOException ignore) {
+                log("error closing reader: " + ignore.getMessage());
             }
             this.reader = null;
         }
-
+        log("closing inputStreamReader");
         InputStreamReader inputStreamReader = this.inputStreamReader;
         if (inputStreamReader != null) {
             try {
                 inputStreamReader.close();
             } catch (IOException ignore) {
+                log("error closing inputStreamReader: " + ignore.getMessage());
             }
             this.inputStreamReader = null;
         }
 
+        log("closing socket");
         Socket socket = this.socket;
         if (socket != null) {
             try {
                 socket.close();
             } catch (IOException ignore) {
+                log("error closing socket: " + ignore.getMessage());
             }
             this.socket = null;
         }
@@ -274,7 +304,9 @@ public class MPDConnectionThread extends Thread {
         final BufferedReader reader = this.reader;
         if (reader != null) {
             while (!done) {
+                log("start readlin");
                 String line = reader.readLine();
+                log("received line:" + line);
                 logger.trace("received line '{}'", line);
 
                 if (line != null) {
