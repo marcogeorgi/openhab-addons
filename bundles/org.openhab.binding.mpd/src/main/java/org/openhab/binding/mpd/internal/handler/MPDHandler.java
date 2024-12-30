@@ -282,6 +282,7 @@ public class MPDHandler extends BaseThingHandler implements MPDEventListener {
 
     @Override
     public void updateMPDSong(MPDSong song) {
+        updateChannel(CHANNEL_CURRENT_FILENAME, new StringType(song.getFilename()));
         updateChannel(CHANNEL_CURRENT_ALBUM, new StringType(song.getAlbum()));
         updateChannel(CHANNEL_CURRENT_ARTIST, new StringType(song.getArtist()));
         updateChannel(CHANNEL_CURRENT_NAME, new StringType(song.getName()));

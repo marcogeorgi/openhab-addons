@@ -31,6 +31,7 @@ public class MPDBindingConstants {
 
     // List of all Channel ids
     public static final String CHANNEL_CONTROL = "control";
+    public static final String CHANNEL_CURRENT_FILENAME = "currentfilename";
     public static final String CHANNEL_CURRENT_ALBUM = "currentalbum";
     public static final String CHANNEL_CURRENT_ARTIST = "currentartist";
     public static final String CHANNEL_CURRENT_NAME = "currentname";

@@ -10,6 +10,7 @@
 		<channels>
 			<channel id="control" typeId="system.media-control"/>
 			<channel id="volume" typeId="system.volume"/>
+			<channel id="currentfilename" typeId="currentfilename"/>
 			<channel id="currentalbum" typeId="currentalbum"/>
 			<channel id="currentartist" typeId="system.media-artist"/>
 			<channel id="currentname" typeId="currentname"/>
@@ -43,6 +44,13 @@
 	</thing-type>
 
 	<!-- Channel Types -->
+	<channel-type id="currentfilename">
+		<item-type>String</item-type>
+		<label>Current File Name</label>
+		<description>Name of the file currently playing.</description>
+		<state readOnly="true"/>
+	</channel-type>
+
 	<channel-type id="currentalbum">
 		<item-type>String</item-type>
 		<label>Current Album</label>
